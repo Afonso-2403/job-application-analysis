@@ -77,3 +77,24 @@ def update_column_value(
     sheet.batch_update(cells)
 
     return len(matching_indices)
+
+def delete_column(sheet_name: str, column_name: str):
+    """Delete an entire column from the spreadsheet by its header name.
+
+    Args:
+        sheet_name: Name of the Google Spreadsheet.
+        column_name: Header name of the column to delete (matched from header row 4).
+    """
+    gc = gspread.oauth(
+        credentials_filename=f"{Path(__file__).parent}/.config/credentials.json",
+        authorized_user_filename=f"{Path(__file__).parent}/.config/authorized_user.json",
+    )
+
+    sheet = gc.open(sheet_name).sheet1
+    headers = sheet.row_values(5)  # Header row is index 4 (0-based), row 5 (1-based)
+
+    if column_name not in headers:
+        raise ValueError(f"Column '{column_name}' not found. Available: {headers}")
+
+    col_idx = headers.index(column_name) + 1  # 1-indexed for gspread
+    sheet.delete_columns(col_idx)
