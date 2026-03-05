@@ -7,13 +7,20 @@ import pandas as pd
 _CONFIG_DIR = Path(__file__).parent / ".config"
 DEFAULT_CREDENTIALS = str(_CONFIG_DIR / "credentials.json")
 DEFAULT_AUTHORIZED_USER = str(_CONFIG_DIR / "authorized_user.json")
-
+SERVICE_ACCOUNT_CREDENTIALS = str(_CONFIG_DIR / "micro-pilot-485616-j1-047f49f9ef35.json")
 
 def open_google_sheet(
     sheet_name: str,
     credentials_filename: str = DEFAULT_CREDENTIALS,
     authorized_user_filename: str = DEFAULT_AUTHORIZED_USER,
+    use_service_account: bool = False,
+    service_account_credentials_filename: str = SERVICE_ACCOUNT_CREDENTIALS,
 ) -> gspread.Spreadsheet:
+    
+    if use_service_account:
+        gc = gspread.service_account(filename=service_account_credentials_filename)
+        return gc.open(sheet_name)
+    
     gc = gspread.oauth(
         credentials_filename=credentials_filename,
         authorized_user_filename=authorized_user_filename,
@@ -28,8 +35,7 @@ def open_google_sheet(
         )
         return gc.open(sheet_name)
 
-def get_spreadsheet_data(sheet_name: str):
-    sheet = open_google_sheet(sheet_name).sheet1
+def get_applications_spreadsheet_data(sheet: gspread.Worksheet):
 
     # The records start from row 6 (0-indexed)
     # The header row is row 4
@@ -41,8 +47,8 @@ def get_spreadsheet_data(sheet_name: str):
 
     return df
 
-def update_column_value(
-    sheet_name: str,
+def update_column_value_in_applications_sheet(
+    sheet: gspread.Worksheet,
     filter_column: str,
     filter_value: str,
     target_column: str,
@@ -60,7 +66,7 @@ def update_column_value(
     Returns:
         Number of rows updated.
     """
-    sheet = open_google_sheet(sheet_name).sheet1
+    
     all_values = sheet.get_all_values()
 
     # Header row is at index 4 (0-indexed), data starts at index 6
@@ -92,14 +98,13 @@ def update_column_value(
 
     return len(matching_indices)
 
-def delete_column(sheet_name: str, column_name: str):
+def delete_column_from_applications_sheet(sheet: gspread.Worksheet, column_name: str):
     """Delete an entire column from the spreadsheet by its header name.
 
     Args:
         sheet_name: Name of the Google Spreadsheet.
         column_name: Header name of the column to delete (matched from header row 4).
     """
-    sheet = open_google_sheet(sheet_name).sheet1
     headers = sheet.row_values(5)  # Header row is index 4 (0-based), row 5 (1-based)
 
     if column_name not in headers:
