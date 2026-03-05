@@ -1,15 +1,35 @@
 import gspread
+from google.auth.exceptions import RefreshError
 from pathlib import Path
 import pandas as pd
 
 
-def get_spreadsheet_data(sheet_name: str):
-    gc = gspread.oauth(
-        credentials_filename=f"{Path(__file__).parent}/.config/credentials.json",
-        authorized_user_filename=f"{Path(__file__).parent}/.config/authorized_user.json"
-    )
+_CONFIG_DIR = Path(__file__).parent / ".config"
+DEFAULT_CREDENTIALS = str(_CONFIG_DIR / "credentials.json")
+DEFAULT_AUTHORIZED_USER = str(_CONFIG_DIR / "authorized_user.json")
 
-    sheet = gc.open(sheet_name).sheet1
+
+def open_google_sheet(
+    sheet_name: str,
+    credentials_filename: str = DEFAULT_CREDENTIALS,
+    authorized_user_filename: str = DEFAULT_AUTHORIZED_USER,
+) -> gspread.Spreadsheet:
+    gc = gspread.oauth(
+        credentials_filename=credentials_filename,
+        authorized_user_filename=authorized_user_filename,
+    )
+    try:
+        return gc.open(sheet_name)
+    except RefreshError:
+        Path(authorized_user_filename).unlink(missing_ok=True)
+        gc = gspread.oauth(
+            credentials_filename=credentials_filename,
+            authorized_user_filename=authorized_user_filename,
+        )
+        return gc.open(sheet_name)
+
+def get_spreadsheet_data(sheet_name: str):
+    sheet = open_google_sheet(sheet_name).sheet1
 
     # The records start from row 6 (0-indexed)
     # The header row is row 4
@@ -20,7 +40,6 @@ def get_spreadsheet_data(sheet_name: str):
     df = pd.DataFrame(data, columns=headers)
 
     return df
-
 
 def update_column_value(
     sheet_name: str,
@@ -41,12 +60,7 @@ def update_column_value(
     Returns:
         Number of rows updated.
     """
-    gc = gspread.oauth(
-        credentials_filename=f"{Path(__file__).parent}/.config/credentials.json",
-        authorized_user_filename=f"{Path(__file__).parent}/.config/authorized_user.json",
-    )
-
-    sheet = gc.open(sheet_name).sheet1
+    sheet = open_google_sheet(sheet_name).sheet1
     all_values = sheet.get_all_values()
 
     # Header row is at index 4 (0-indexed), data starts at index 6
@@ -85,12 +99,7 @@ def delete_column(sheet_name: str, column_name: str):
         sheet_name: Name of the Google Spreadsheet.
         column_name: Header name of the column to delete (matched from header row 4).
     """
-    gc = gspread.oauth(
-        credentials_filename=f"{Path(__file__).parent}/.config/credentials.json",
-        authorized_user_filename=f"{Path(__file__).parent}/.config/authorized_user.json",
-    )
-
-    sheet = gc.open(sheet_name).sheet1
+    sheet = open_google_sheet(sheet_name).sheet1
     headers = sheet.row_values(5)  # Header row is index 4 (0-based), row 5 (1-based)
 
     if column_name not in headers:
