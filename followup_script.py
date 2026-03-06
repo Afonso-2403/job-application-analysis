@@ -5,7 +5,7 @@ import pandas as pd
 import requests
 
 from google_sheets import open_google_sheet, get_applications_spreadsheet_data
-from followup import get_applications_that_need_followup, format_followup_report
+from followup_utils import get_applications_that_need_followup, format_followup_report
 
 load_dotenv()
 
