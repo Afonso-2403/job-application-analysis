@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def get_needs_followup(
+def get_applications_that_need_followup(
     applications_df: pd.DataFrame,
     days_with_communication: int = 7,
     days_without_communication: int = 14,
@@ -33,3 +33,22 @@ def get_needs_followup(
     ]
 
     return needs_followup
+
+def format_followup_report(needs_followup: pd.DataFrame) -> str:
+    lines = []
+    lines.append(f"Applications needing follow-up: {len(needs_followup)}")
+    lines.append(f"  - With last communication (>7 days): {len(needs_followup[~needs_followup['Used_Application_Date']])}")
+    lines.append(f"  - Without last communication (>14 days): {len(needs_followup[needs_followup['Used_Application_Date']])}")
+    lines.append("")
+    lines.append("=" * 80)
+
+    for _, row in needs_followup.sort_values("Days Since Contact", ascending=False).iterrows():
+        date_source = "Application Date" if row["Used_Application_Date"] else "Last Communication"
+        lines.append(f"Company:      {row['Company']}")
+        lines.append(f"Role:         {row['Role Title']}")
+        lines.append(f"Days:         {row['Days Since Contact']} (based on {date_source})")
+        comments = row["Comments"] if pd.notna(row["Comments"]) and row["Comments"] != "" else "N/A"
+        lines.append(f"Comments:     {comments}")
+        lines.append("-" * 80)
+
+    return "\n".join(lines)
